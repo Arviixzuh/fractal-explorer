@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>🌌 Mandel-Engine</h1>
+<h1>🌌 Fractal Explorer</h1>
 
 <img src="assets/mandel-engine-demo.gif" width="800" alt="Mandel-Engine application demo">
 
