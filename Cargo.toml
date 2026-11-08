@@ -1,0 +1,16 @@
+[package]
+name = "mandel-engine"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[dependencies]
+creamui = { version = "0.3.0", features = ["image"] }
+rayon = "1.10"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
