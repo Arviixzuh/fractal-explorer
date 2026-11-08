@@ -1,8 +1,8 @@
 <div align="center">
 
-<h1>🌌 Mandel-Engine</h1>
+<h1>🌌 Fractal Explorer</h1>
 
-<img src="assets/mandel-engine-demo.gif" width="800" alt="Mandel-Engine application demo">
+<img src="assets/fractal.PNG" width="800" alt="application">
 
 **A native Mandelbrot and Julia set explorer** built with Rust and CreamUI, featuring responsive navigation, parallel CPU rendering, and deep-zoom detail.
 
@@ -12,7 +12,7 @@
 
 ## Overview
 
-Mandel-Engine is a desktop application for exploring the Mandelbrot and Julia sets. Its CreamUI interface keeps rendering controls and live diagnostics alongside the fractal canvas, while Rayon distributes pixel calculations across CPU threads.
+Fractal Explorer is a desktop application for exploring the Mandelbrot and Julia sets. Its CreamUI interface keeps rendering controls and live diagnostics alongside the fractal canvas, while Rayon distributes pixel calculations across CPU threads.
 
 The last complete frame is transformed during navigation so the canvas stays responsive while a new preview is rendered. After interaction stops, the preview is replaced with a full-quality frame.
 
