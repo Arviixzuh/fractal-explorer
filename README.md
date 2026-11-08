@@ -2,7 +2,7 @@
 
 <h1>🌌 Mandel-Engine</h1>
 
-<img src="assets/mandel-engine-demo-optimized.gif" width="800" alt="Mandel-Engine application demo">
+<img src="assets/mandel-engine-demo.gif" width="800" alt="Mandel-Engine application demo">
 
 **A native Mandelbrot and Julia set explorer** built with Rust and CreamUI, featuring responsive navigation, parallel CPU rendering, and deep-zoom detail.
 
