@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.85"
 
 [dependencies]
-creamui = { version = "0.3.0", features = ["image"] }
+creamui = { version = "0.3.0", features = ["image", "jsx"] }
 rayon = "1.10"
 
 [profile.release]

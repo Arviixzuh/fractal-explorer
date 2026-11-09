@@ -8,17 +8,11 @@ pub enum Palette {
 }
 
 impl Palette {
-    pub const ALL: [Self; 3] = [
-        Self::MonochromeTerminal,
-        Self::CyberpunkNeon,
-        Self::DeepVoidBlue,
-    ];
-
     pub fn label(self) -> &'static str {
         match self {
-            Self::MonochromeTerminal => "MONOCHROME TERMINAL",
-            Self::CyberpunkNeon => "CYBERPUNK NEON",
-            Self::DeepVoidBlue => "DEEP VOID BLUE",
+            Self::MonochromeTerminal => "Monochrome Terminal",
+            Self::CyberpunkNeon => "Cyberpunk Neon",
+            Self::DeepVoidBlue => "Deep Void Blue",
         }
     }
 

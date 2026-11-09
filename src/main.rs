@@ -1,18 +1,14 @@
 mod camera;
+mod components;
 mod fractal;
 mod palette;
 
 use camera::Camera;
-use creamui::core::layout::Style;
-use creamui::core::{BoxedWidget, Painter, Point, Rect, Size, Widget};
-use creamui::widgets::layout::Flex;
-use creamui::{
-    run, AppHandle, Button, ButtonSize, Icon, ImageData, Styled, Symbol, Text, Theme, WindowHandle,
-    WindowOptions,
-};
+use creamui::core::layout::FlexDirection;
+use creamui::core::{BoxedWidget, Point, Size};
+use creamui::{jsx, run, AppHandle, ImageData, Theme, WindowHandle, WindowOptions};
 use fractal::{adaptive_iterations, FractalMode, RenderParams, RenderedFrame};
 use palette::Palette;
-use rayon::current_num_threads;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -171,10 +167,6 @@ fn main() {
                     schedule_render(&state, &window_slot);
                 }
 
-                let mut root = Flex::column()
-                    .size(viewport.width, viewport.height)
-                    .background(creamui::Color::rgb(4, 5, 5));
-
                 let canvas_state = state.clone();
                 let drag_start_state = canvas_state.clone();
                 let drag_start_window = window_slot.clone();
@@ -182,8 +174,8 @@ fn main() {
                 let drag_window = window_slot.clone();
                 let scroll_state = canvas_state.clone();
                 let scroll_window = window_slot.clone();
-                let canvas = FractalCanvas {
-                    style: Style {
+                let canvas = components::fractal_canvas::build(components::fractal_canvas::Props {
+                    style: creamui::core::layout::Style {
                         flex_grow: 1.0,
                         ..Default::default()
                     }
@@ -290,393 +282,21 @@ fn main() {
                         }
                         schedule_interactive_render(&scroll_state, &scroll_window);
                     }),
-                };
-                root = root.child(Box::new(canvas));
+                });
 
-                root = root.child(Box::new(
-                    build_sidebar(&state, &window_slot, current_fps, viewport.height)
-                        .position(creamui::core::layout::Position::Absolute)
-                        .left(SIDEBAR_LEFT)
-                        .top(SIDEBAR_TOP),
-                ));
-                Box::new(root)
+                Box::new(jsx! {
+                    <Flex
+                        direction={FlexDirection::Column}
+                        size={(viewport.width, viewport.height)}
+                        background={creamui::Color::rgb(4, 5, 5)}
+                    >
+                        {canvas}
+                        {components::sidebar::build(&state, &window_slot, current_fps, viewport.height)}
+                    </Flex>
+                })
             }
         },
     );
-}
-
-fn build_sidebar(
-    state: &Rc<RefCell<AppState>>,
-    window_slot: &Rc<RefCell<Option<WindowHandle>>>,
-    fps: f32,
-    height: f32,
-) -> Flex {
-    let (base_iterations, palette, mode, render_ms, center, zoom) = {
-        let state = state.borrow();
-        (
-            state.iterations,
-            state.palette,
-            state.mode,
-            state.render_ms,
-            state.camera.center,
-            state.camera.zoom,
-        )
-    };
-    let iterations = adaptive_iterations(base_iterations, zoom, MAX_ITERATIONS);
-    let muted = creamui::Color::rgb(142, 147, 142);
-    let accent = creamui::Color::rgb(174, 195, 184);
-    let primary = creamui::Color::rgb(232, 230, 224);
-    let mut panel = Flex::column()
-        .size(SIDEBAR_WIDTH, (height - 28.0).max(1.0))
-        .gap(9.0)
-        .background(creamui::Color::rgba(8, 9, 9, 222))
-        .border(creamui::Color::rgba(174, 195, 184, 110), 1.0)
-        .corner_radius(3.0)
-        .box_shadow(creamui::core::BoxShadow::new(
-            0.0,
-            0.0,
-            22.0,
-            0.0,
-            creamui::Color::rgba(174, 195, 184, 18),
-        ))
-        .padding(14.0);
-
-    panel = panel
-        .child(Box::new(
-            Flex::row()
-                .gap(9.0)
-                .child(Box::new(Icon::new(Symbol::Display, accent).size(22.0)))
-                .child(Box::new(
-                    Text::new("Fractal Explorer")
-                        .font_size(19.0)
-                        .color(primary)
-                        .font_family(DISPLAY_FONT),
-                )),
-        ))
-        .child(Box::new(
-            Text::new("COMPLEX PLANE  //  LIVE VISUALIZATION")
-                .font_size(10.0)
-                .color(muted),
-        ));
-
-    let status_rows: Vec<creamui::core::BoxedWidget> = vec![
-        Box::new(diagnostic_row(
-            Symbol::Display,
-            "SYS.FPS",
-            format!("{:>6.1}", fps),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Grid,
-            "PLANE.RE",
-            format!("{:+.12e}", center.x.to_f64()),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Grid,
-            "PLANE.IM",
-            format!("{:+.12e}", center.y.to_f64()),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Search,
-            "ZOOM_MAG",
-            format!("{:.3e}x", zoom),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Sliders,
-            "ITERATIONS",
-            format!("{iterations}"),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Controls,
-            "CPU_THREADS",
-            format!("{}", current_num_threads()),
-            accent,
-            primary,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Appearance,
-            "RENDER_MS",
-            format!("{render_ms:.1} ms"),
-            accent,
-            primary,
-        )),
-    ];
-    panel = panel.child(Box::new(section_card(
-        Symbol::Grid,
-        "[SYS_STATUS]",
-        accent,
-        status_rows,
-    )));
-
-    let mode_options = FractalMode::ALL
-        .into_iter()
-        .map(|option| {
-            let state = state.clone();
-            let window_slot = window_slot.clone();
-            Box::new(terminal_button(
-                &format!(
-                    "{} {}",
-                    if mode == option { ">" } else { " " },
-                    option.label()
-                ),
-                mode == option,
-                move || {
-                    if state.borrow().mode != option {
-                        state.borrow_mut().mode = option;
-                        schedule_render(&state, &window_slot);
-                    }
-                },
-            )) as creamui::core::BoxedWidget
-        })
-        .collect();
-    panel = panel.child(Box::new(section_card(
-        Symbol::Controls,
-        "[FRACTAL_TYPE]",
-        accent,
-        vec![Box::new(widget_stack(mode_options, 4.0))],
-    )));
-
-    let palette_options = Palette::ALL
-        .into_iter()
-        .map(|option| {
-            let state = state.clone();
-            let window_slot = window_slot.clone();
-            Box::new(terminal_button(
-                &format!(
-                    "{} {}",
-                    if palette == option { ">" } else { " " },
-                    option.label()
-                ),
-                palette == option,
-                move || {
-                    if state.borrow().palette != option {
-                        state.borrow_mut().palette = option;
-                        schedule_render(&state, &window_slot);
-                    }
-                },
-            )) as creamui::core::BoxedWidget
-        })
-        .collect();
-    panel = panel.child(Box::new(section_card(
-        Symbol::Appearance,
-        "[VISUAL_THEME]",
-        accent,
-        vec![Box::new(widget_stack(palette_options, 4.0))],
-    )));
-
-    let iteration_controls = Flex::column()
-        .gap(6.0)
-        .child(Box::new(
-            Flex::row()
-                .gap(6.0)
-                .child(Box::new(terminal_button("[ ITER - ]", false, {
-                    let state = state.clone();
-                    let window_slot = window_slot.clone();
-                    move || {
-                        state.borrow_mut().iterations =
-                            iterations.saturating_sub(64).max(MIN_ITERATIONS);
-                        schedule_render(&state, &window_slot);
-                    }
-                })))
-                .child(Box::new(terminal_button("[ ITER + ]", false, {
-                    let state = state.clone();
-                    let window_slot = window_slot.clone();
-                    move || {
-                        state.borrow_mut().iterations = (iterations + 64).min(MAX_ITERATIONS);
-                        schedule_render(&state, &window_slot);
-                    }
-                }))),
-        ))
-        .child(Box::new(
-            Text::new(format!("DEPTH  {iterations}"))
-                .font_size(10.0)
-                .color(muted)
-                .font_family(MONOSPACE_FONT),
-        ))
-        .child(Box::new(creamui::Slider::new(
-            (iterations.saturating_sub(MIN_ITERATIONS) as f32)
-                / (MAX_ITERATIONS - MIN_ITERATIONS) as f32,
-            {
-                let state = state.clone();
-                let window_slot = window_slot.clone();
-                move |value| {
-                    let iterations = MIN_ITERATIONS
-                        + ((MAX_ITERATIONS - MIN_ITERATIONS) as f32 * value.clamp(0.0, 1.0)).round()
-                            as u32;
-                    if state.borrow().iterations != iterations {
-                        state.borrow_mut().iterations = iterations;
-                        schedule_render(&state, &window_slot);
-                    }
-                }
-            },
-        )))
-        .child(Box::new(terminal_button("[ RESET VIEW ]", false, {
-            let state = state.clone();
-            let window_slot = window_slot.clone();
-            move || {
-                let mut current = state.borrow_mut();
-                current.camera = Camera::default();
-                current.visual_camera.set(current.camera);
-                drop(current);
-                schedule_render(&state, &window_slot);
-            }
-        })));
-    panel = panel.child(Box::new(section_card(
-        Symbol::Sliders,
-        "[RENDER_DETAIL]",
-        accent,
-        vec![Box::new(iteration_controls)],
-    )));
-
-    let navigation_rows: Vec<creamui::core::BoxedWidget> = vec![
-        Box::new(diagnostic_row(
-            Symbol::Search,
-            "HOLD : ZOOM TO CURSOR",
-            "",
-            accent,
-            muted,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Display,
-            "DRAG : PAN PLANE",
-            "",
-            accent,
-            muted,
-        )),
-        Box::new(diagnostic_row(
-            Symbol::Controls,
-            "WHEEL : ZOOM IN / OUT",
-            "",
-            accent,
-            muted,
-        )),
-    ];
-    panel = panel.child(Box::new(section_card(
-        Symbol::Search,
-        "[NAVIGATION]",
-        accent,
-        navigation_rows,
-    )));
-    panel
-}
-
-fn terminal_button(label: &str, selected: bool, on_click: impl Fn() + 'static) -> Button {
-    let label = label.to_owned();
-    let button_label = label.clone();
-    Button::secondary(ButtonSize::Sm, label, on_click).customize(move |button| {
-        button.children = vec![Box::new(
-            creamui::raw::RawText::new(
-                button_label,
-                if selected {
-                    creamui::Color::rgb(174, 195, 184)
-                } else {
-                    creamui::Color::rgb(232, 230, 224)
-                },
-                11.0,
-            )
-            .font_family(MONOSPACE_FONT),
-        )];
-        button.style = button
-            .style
-            .clone()
-            .background(if selected {
-                creamui::Color::rgba(174, 195, 184, 32)
-            } else {
-                creamui::Color::rgba(12, 14, 13, 210)
-            })
-            .border(
-                creamui::Color::rgba(174, 195, 184, if selected { 220 } else { 90 }),
-                1.0,
-            )
-            .corner_radius(4.0)
-            .box_shadow(creamui::core::BoxShadow::new(
-                0.0,
-                0.0,
-                if selected { 10.0 } else { 0.0 },
-                0.0,
-                creamui::Color::rgba(174, 195, 184, if selected { 34 } else { 0 }),
-            ))
-            .hover(
-                creamui::core::StateStyle::new()
-                    .background(creamui::Color::rgba(174, 195, 184, 48))
-                    .border(creamui::Color::rgb(198, 215, 206), 1.0),
-            )
-            .pressed(
-                creamui::core::StateStyle::new()
-                    .background(creamui::Color::rgba(174, 195, 184, 82))
-                    .border(creamui::Color::rgb(215, 225, 219), 1.0),
-            );
-    })
-}
-
-fn section_card(
-    symbol: Symbol,
-    label: &str,
-    accent: creamui::Color,
-    children: Vec<creamui::core::BoxedWidget>,
-) -> Flex {
-    let mut card = Flex::column()
-        .gap(6.0)
-        .padding(8.0)
-        .background(creamui::Color::rgba(0, 0, 0, 135))
-        .border(creamui::Color::rgba(174, 195, 184, 58), 1.0)
-        .corner_radius(3.0)
-        .child(Box::new(section_title(symbol, label, accent)));
-    for child in children {
-        card = card.child(child);
-    }
-    card
-}
-
-fn widget_stack(children: Vec<creamui::core::BoxedWidget>, gap: f32) -> Flex {
-    children
-        .into_iter()
-        .fold(Flex::column().gap(gap), |column, child| column.child(child))
-}
-
-fn section_title(symbol: Symbol, label: &str, color: creamui::Color) -> Flex {
-    Flex::row()
-        .gap(6.0)
-        .child(Box::new(Icon::new(symbol, color).size(14.0)))
-        .child(Box::new(
-            Text::new(label)
-                .font_size(11.0)
-                .color(color)
-                .font_family(MONOSPACE_FONT),
-        ))
-}
-
-fn diagnostic_row(
-    symbol: Symbol,
-    label: &str,
-    value: impl Into<String>,
-    icon_color: creamui::Color,
-    text_color: creamui::Color,
-) -> Flex {
-    let value = value.into();
-    let text = if value.is_empty() {
-        label.to_owned()
-    } else {
-        format!("{label:<12} {value}")
-    };
-    Flex::row()
-        .gap(7.0)
-        .child(Box::new(Icon::new(symbol, icon_color).size(13.0)))
-        .child(Box::new(
-            Text::new(text)
-                .font_size(10.0)
-                .color(text_color)
-                .font_family(MONOSPACE_FONT),
-        ))
 }
 
 fn point_is_over_menu(point: Point, canvas_height: f32) -> bool {
@@ -684,91 +304,6 @@ fn point_is_over_menu(point: Point, canvas_height: f32) -> bool {
         && point.x <= SIDEBAR_LEFT + SIDEBAR_WIDTH
         && point.y >= SIDEBAR_TOP
         && point.y <= SIDEBAR_TOP + (canvas_height - 2.0 * SIDEBAR_TOP).max(0.0)
-}
-
-struct FractalCanvas {
-    style: creamui::core::Style,
-    image: Option<DisplayFrame>,
-    visual_camera: Rc<Cell<Camera>>,
-    frame_counter: Rc<RefCell<(Instant, u32, f32)>>,
-    on_drag_start: Rc<dyn Fn(Point, Rect)>,
-    on_drag: Rc<dyn Fn(Point, Rect)>,
-    on_drag_end: Rc<dyn Fn()>,
-    on_scroll: Rc<dyn Fn(f32)>,
-}
-
-impl Widget for FractalCanvas {
-    fn style(&self) -> creamui::core::Style {
-        self.style.clone()
-    }
-
-    fn paint(&self, painter: &mut dyn Painter, rect: Rect) {
-        let now = Instant::now();
-        {
-            let mut counter = self.frame_counter.borrow_mut();
-            counter.1 += 1;
-            let elapsed = now.duration_since(counter.0).as_secs_f32();
-            if elapsed >= 0.5 {
-                counter.2 = counter.1 as f32 / elapsed;
-                counter.0 = now;
-                counter.1 = 0;
-            }
-        }
-        painter.fill_rect(rect, creamui::Color::rgb(4, 5, 5), 0.0);
-        if let Some(frame) = &self.image {
-            let transformed = transformed_frame_rect(rect, frame.camera, self.visual_camera.get());
-            painter.push_clip(rect);
-            painter.draw_image(transformed, frame.image.image(), None);
-            painter.pop_clip();
-        } else {
-            painter.fill_text(
-                rect,
-                "INITIALIZING FRACTAL ENGINE...",
-                creamui::Color::rgb(174, 195, 184),
-                14.0,
-                creamui::core::TextAlign::Center,
-            );
-        }
-    }
-
-    fn on_drag_start(&self) -> Option<Rc<dyn Fn(Point, Rect)>> {
-        Some(self.on_drag_start.clone())
-    }
-
-    fn on_drag(&self) -> Option<Rc<dyn Fn(Point, Rect)>> {
-        Some(self.on_drag.clone())
-    }
-
-    fn on_drag_end(&self) -> Option<Rc<dyn Fn()>> {
-        Some(self.on_drag_end.clone())
-    }
-
-    fn on_scroll(&self) -> Option<Rc<dyn Fn(f32)>> {
-        Some(self.on_scroll.clone())
-    }
-}
-
-fn transformed_frame_rect(rect: Rect, frame_camera: Camera, current_camera: Camera) -> Rect {
-    let scale = current_camera.zoom / frame_camera.zoom;
-    let half_height = rect.height as f64 * 0.5;
-    Rect {
-        x: (rect.x as f64
-            + rect.width as f64 * 0.5
-            + frame_camera.center.x.sub(current_camera.center.x).to_f64()
-                * current_camera.zoom
-                * half_height
-                / 2.0
-            - rect.width as f64 * scale * 0.5) as f32,
-        y: (rect.y as f64
-            + rect.height as f64 * 0.5
-            + current_camera.center.y.sub(frame_camera.center.y).to_f64()
-                * current_camera.zoom
-                * half_height
-                / 2.0
-            - rect.height as f64 * scale * 0.5) as f32,
-        width: (rect.width as f64 * scale) as f32,
-        height: (rect.height as f64 * scale) as f32,
-    }
 }
 
 fn schedule_render(state: &Rc<RefCell<AppState>>, window_slot: &Rc<RefCell<Option<WindowHandle>>>) {
@@ -1070,6 +605,7 @@ fn schedule_telemetry_tick(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use creamui::core::Rect;
 
     #[test]
     fn transformed_preview_keeps_the_zoom_anchor_in_place() {
@@ -1077,7 +613,7 @@ mod tests {
         let mut current_camera = frame_camera;
         let (x, y) = (137.0_f32, 211.0_f32);
         current_camera.zoom_at(x as f64, y as f64, 800.0, 600.0, 2.0);
-        let destination = transformed_frame_rect(
+        let destination = components::fractal_canvas::transformed_frame_rect(
             Rect {
                 x: 0.0,
                 y: 0.0,

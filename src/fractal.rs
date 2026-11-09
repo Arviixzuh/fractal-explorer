@@ -12,12 +12,10 @@ pub enum FractalMode {
 impl FractalMode {
     pub fn label(self) -> &'static str {
         match self {
-            Self::Mandelbrot => "MANDELBROT",
-            Self::Julia => "JULIA",
+            Self::Mandelbrot => "Mandelbrot",
+            Self::Julia => "Julia",
         }
     }
-
-    pub const ALL: [Self; 2] = [Self::Mandelbrot, Self::Julia];
 }
 
 pub struct RenderParams {
