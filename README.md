@@ -36,7 +36,8 @@ The application continuously transforms the last complete frame while a preview 
 
 Fractal Explorer is built around a small but efficient rendering pipeline:
 
-- `src/main.rs` orchestrates the UI, controls, and rendering lifecycle.
+- `src/main.rs` starts the application and coordinates window events.
+- `src/components/` assembles CreamUI widget trees with the `jsx!` macro. The sidebar and its controls are organized into separate modules; the fractal canvas is a custom `Widget` for image rendering and pointer input.
 - `src/fractal.rs` contains the Mandelbrot and Julia calculations and parallel renderer.
 - `src/camera.rs` handles complex-plane transformations and extended precision math.
 - `src/palette.rs` defines the available palettes and smooth iteration-based coloring.
@@ -55,8 +56,19 @@ fractales/
 │   └── fractal.png         # Application preview image
 ├── src/
 │   ├── camera.rs           # Camera math and extended precision logic
+│   ├── components/
+│   │   ├── fractal_canvas.rs
+│   │   └── sidebar/
+│   │       ├── diagnostic_row.rs
+│   │       ├── fractal_mode.rs
+│   │       ├── navigation.rs
+│   │       ├── palette.rs
+│   │       ├── render_details.rs
+│   │       ├── section_card.rs
+│   │       ├── status.rs
+│   │       └── terminal_button.rs
 │   ├── fractal.rs          # Fractal algorithms and parallel rendering
-│   ├── main.rs             # UI, controls, and render orchestration
+│   ├── main.rs             # Application state and render orchestration
 │   └── palette.rs          # Color palettes and smooth iteration coloring
 ├── Cargo.toml              # Package metadata and dependencies
 ├── Cargo.lock              # Locked dependency versions
@@ -120,7 +132,7 @@ cargo check --release
 | Mouse wheel                             | Zoom in or out around the cursor        |
 | Hold mouse button on the fractal canvas | Continuous zoom toward the cursor       |
 | Drag on the fractal canvas              | Pan around the complex plane            |
-| `ITER -` / `ITER +` or the depth slider | Adjust iteration depth                  |
+| `-` / `+` or the depth slider           | Adjust iteration depth                  |
 | Fractal selector                        | Switch between Mandelbrot and Julia     |
 | Palette selector                        | Choose among the available color themes |
-| `RESET VIEW`                            | Restore the default camera position     |
+| `Reset View`                            | Restore the default camera position     |
