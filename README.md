@@ -17,7 +17,7 @@ A native fractal exploration experience built in Rust, designed for deep zoom in
 
 ## Overview
 
-Fractal Explorer is a desktop application for exploring the Mandelbrot and Julia sets with live controls, adaptive precision, and a polished native UI. It combines a fast CPU-based renderer, zoom, and inspect fine structure without sacrificing interactivity.
+Fractal Explorer is a desktop application for exploring the Mandelbrot and Julia sets with live controls, adaptive precision, and a polished native UI. It combines a fast CPU-based renderer with the ability to zoom in and inspect fine structure without sacrificing interactivity.
 
 The application continuously transforms the last complete frame while a preview is rendered, keeping the canvas responsive during interaction. Once motion stops, the preview is replaced by a high-detail final frame.
 
